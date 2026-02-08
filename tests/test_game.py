@@ -9,6 +9,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.player import Player
 from src.echo import Echo, ECHO_COLORS
 from src.item import Item
+from src.powerup import Powerup, PowerupType, ActiveEffect, POWERUP_CONFIG
 
 
 class TestPlayer:
@@ -174,3 +175,85 @@ class TestItem:
         item.x = 100
         item.y = 100
         assert item.collides_with(400, 400, 12) is False
+
+
+class TestPowerup:
+    """Tests for Powerup class."""
+
+    def test_starts_inactive(self):
+        """Powerup should start inactive."""
+        p = Powerup(800, 600)
+        assert p.active is False
+
+    def test_spawns_after_interval(self):
+        """Powerup should spawn after timer expires."""
+        p = Powerup(800, 600)
+        for _ in range(100):
+            p.update(0.1)  # 10 seconds total
+        assert p.active is True
+
+    def test_collect_returns_type(self):
+        """Collecting active powerup should return its type."""
+        p = Powerup(800, 600)
+        # Force spawn
+        for _ in range(100):
+            p.update(0.1)
+        ptype = p.collect()
+        assert ptype in [PowerupType.GHOST_EATER, PowerupType.TIME_FREEZE, PowerupType.SHRINK]
+
+    def test_collect_deactivates(self):
+        """Collecting powerup should deactivate it."""
+        p = Powerup(800, 600)
+        for _ in range(100):
+            p.update(0.1)
+        p.collect()
+        assert p.active is False
+
+    def test_collect_inactive_returns_none(self):
+        """Collecting inactive powerup should return None."""
+        p = Powerup(800, 600)
+        assert p.collect() is None
+
+    def test_no_collision_when_inactive(self):
+        """Inactive powerup should not collide."""
+        p = Powerup(800, 600)
+        assert p.collides_with(p.x, p.y, 12) is False
+
+    def test_ghost_eater_is_rarer(self):
+        """Ghost eater should have lower spawn weight."""
+        ge_weight = POWERUP_CONFIG[PowerupType.GHOST_EATER]["spawn_weight"]
+        tf_weight = POWERUP_CONFIG[PowerupType.TIME_FREEZE]["spawn_weight"]
+        sh_weight = POWERUP_CONFIG[PowerupType.SHRINK]["spawn_weight"]
+        assert ge_weight < tf_weight
+        assert ge_weight < sh_weight
+
+
+class TestActiveEffect:
+    """Tests for ActiveEffect class."""
+
+    def test_initial_progress(self):
+        """Effect should start at full progress."""
+        e = ActiveEffect(PowerupType.TIME_FREEZE)
+        assert e.progress == 1.0
+
+    def test_effect_expires(self):
+        """Effect should expire after duration."""
+        e = ActiveEffect(PowerupType.TIME_FREEZE)
+        duration = POWERUP_CONFIG[PowerupType.TIME_FREEZE]["duration"]
+        result = e.update(duration + 1)
+        assert result is False
+
+    def test_effect_active_during_duration(self):
+        """Effect should be active within duration."""
+        e = ActiveEffect(PowerupType.TIME_FREEZE)
+        result = e.update(1.0)
+        assert result is True
+        assert 0 < e.progress < 1.0
+
+    def test_each_type_has_different_color(self):
+        """Each powerup type should have a distinct color."""
+        colors = set()
+        for ptype in PowerupType:
+            e = ActiveEffect(ptype)
+            colors.add(e.color)
+        assert len(colors) == 3

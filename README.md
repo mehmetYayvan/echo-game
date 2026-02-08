@@ -34,6 +34,22 @@ python src/main.py
 3. Every 5 seconds, another echo joins
 4. Avoid all echoes while collecting items
 5. The arena gets increasingly chaotic as your past selves multiply
+6. Grab powerups to turn the tide
+
+## Powerups
+
+Powerups spawn periodically as glowing orbs with distinct icons:
+
+| Powerup | Color | Icon | Effect |
+|---------|-------|------|--------|
+| **Ghost Eater** | Red | Skull | Become invincible - touching echoes destroys them (+3 pts each) |
+| **Time Freeze** | Ice Blue | Snowflake | Freezes all echoes in place |
+| **Shrink** | Purple | Diamond | Player becomes tiny and harder to hit |
+
+- Ghost Eater is rarer than the others
+- Each powerup lasts ~5 seconds
+- Active effects show as a timer bar at the bottom of the screen
+- Player changes color while a powerup is active
 
 ## Tech Stack
 
