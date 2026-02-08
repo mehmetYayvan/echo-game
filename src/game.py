@@ -8,6 +8,7 @@ from src.player import Player
 from src.echo import Echo
 from src.item import Item
 from src.powerup import Powerup, PowerupType, ActiveEffect
+from src.sound import SoundManager
 
 
 class GameState(Enum):
@@ -46,7 +47,9 @@ class Game:
         self.small_font = pygame.font.Font(None, 28)
         self.big_font = pygame.font.Font(None, 72)
         self.high_score = 0
+        self.sound = SoundManager()
         self.reset()
+        self.sound.play_music()
 
     def reset(self) -> None:
         """Reset game to initial state."""
@@ -129,6 +132,7 @@ class Game:
             new_echo = Echo(self.player.path_history, self.echo_count)
             self.echoes.append(new_echo)
             self.echo_count += 1
+            self.sound.play("echo_spawn")
 
         # Update echoes (skip if time freeze active)
         if not self._has_effect(PowerupType.TIME_FREEZE):
@@ -143,12 +147,14 @@ class Game:
         if self.item.collides_with(self.player.x, self.player.y, self.player.RADIUS):
             self.score += 1
             self.item.respawn()
+            self.sound.play("collect_item")
 
         # Check powerup collection
         if self.powerup.collides_with(self.player.x, self.player.y, self.player.RADIUS):
             ptype = self.powerup.collect()
             if ptype:
                 self.active_effects.append(ActiveEffect(ptype))
+                self.sound.play("collect_powerup")
 
         # Check collision with echoes
         if self.game_time > COLLISION_GRACE:
@@ -164,6 +170,7 @@ class Game:
                             self.echoes.remove(echo)
                             self.ghosts_eaten += 1
                             self.score += 3  # Bonus points for eating
+                            self.sound.play("ghost_eaten")
                         else:
                             self._game_over()
                             return
@@ -171,6 +178,7 @@ class Game:
     def _game_over(self) -> None:
         """Handle game over."""
         self.state = GameState.GAME_OVER
+        self.sound.play("game_over")
         if self.score > self.high_score:
             self.high_score = self.score
 

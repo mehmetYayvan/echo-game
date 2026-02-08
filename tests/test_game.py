@@ -10,6 +10,7 @@ from src.player import Player
 from src.echo import Echo, ECHO_COLORS
 from src.item import Item
 from src.powerup import Powerup, PowerupType, ActiveEffect, POWERUP_CONFIG
+from src.sound import _tone, _concat, _mix, _silence, SoundManager
 
 
 class TestPlayer:
@@ -257,3 +258,57 @@ class TestActiveEffect:
             e = ActiveEffect(ptype)
             colors.add(e.color)
         assert len(colors) == 3
+
+
+class TestSound:
+    """Tests for sound generation (no mixer required)."""
+
+    def test_tone_generates_bytes(self):
+        """Tone should generate non-empty bytes."""
+        data = _tone(440, 0.1)
+        assert isinstance(data, bytes)
+        assert len(data) > 0
+
+    def test_tone_length_matches_duration(self):
+        """Tone length should match expected sample count."""
+        duration = 0.5
+        data = _tone(440, duration)
+        expected_bytes = int(44100 * duration) * 2  # 16-bit = 2 bytes/sample
+        assert len(data) == expected_bytes
+
+    def test_silence_length(self):
+        """Silence should have correct length."""
+        data = _silence(0.1)
+        expected = int(44100 * 0.1) * 2
+        assert len(data) == expected
+
+    def test_concat_combines_buffers(self):
+        """Concat should combine buffers sequentially."""
+        a = _tone(440, 0.05)
+        b = _tone(880, 0.05)
+        result = _concat(a, b)
+        assert len(result) == len(a) + len(b)
+
+    def test_mix_matches_longest(self):
+        """Mix should produce buffer matching longest input."""
+        short = _tone(440, 0.05)
+        long = _tone(880, 0.1)
+        result = _mix(short, long)
+        assert len(result) == len(long)
+
+    def test_different_waves(self):
+        """Different wave types should produce different data."""
+        sine = _tone(440, 0.05, wave="sine")
+        square = _tone(440, 0.05, wave="square")
+        triangle = _tone(440, 0.05, wave="triangle")
+        assert sine != square
+        assert sine != triangle
+
+    def test_sound_manager_without_mixer(self):
+        """SoundManager should disable gracefully without mixer."""
+        sm = SoundManager()
+        assert sm.enabled is False
+        # Should not raise
+        sm.play("collect_item")
+        sm.play_music()
+        sm.stop_music()
