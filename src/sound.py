@@ -93,6 +93,7 @@ class SoundManager:
                 return
             self._generate_sfx()
             self._generate_music()
+            self._generate_disco_music()
         except Exception:
             self.enabled = False
 
@@ -199,16 +200,80 @@ class SoundManager:
         music_data = _mix(melody, bass, pad)
         self.music = pygame.mixer.Sound(buffer=music_data)
 
+    def _generate_disco_music(self) -> None:
+        """Generate a funky disco loop."""
+        # 120 BPM = 0.5s per beat, 8 beats = 4s loop
+        beat = 0.5
+
+        # Funky bass line (four-on-the-floor with octave hops)
+        E2, A2, B2, D3 = 82, 110, 123, 147
+        bass_seq = [E2, E2, A2, A2, B2, B2, A2, D3]
+        bass_parts = []
+        for freq in bass_seq:
+            bass_parts.append(_tone(freq, beat * 0.8, 0.18, "square", 0.1))
+            bass_parts.append(_silence(beat * 0.2))
+        bass = _concat(*bass_parts)
+
+        # Kick drum simulation (very low frequency burst)
+        kick = _concat(
+            _tone(60, 0.08, 0.25, "sine", 0.06),
+            _silence(beat - 0.08),
+        )
+        kicks = kick * 8  # One kick per beat
+
+        # Off-beat hi-hat (short high noise-like tone)
+        hat_hit = _concat(
+            _silence(beat * 0.5),
+            _tone(8000, 0.03, 0.08, "square", 0.02),
+            _silence(beat * 0.5 - 0.03),
+        )
+        hats = hat_hit * 8
+
+        # Funky melody - syncopated disco riff
+        E4, G4, A4, B4, D5 = 330, 392, 440, 494, 587
+        melody_notes = [
+            (E4, 0.2), (0, 0.3), (G4, 0.15), (A4, 0.35),
+            (B4, 0.2), (0, 0.3), (A4, 0.15), (G4, 0.35),
+            (A4, 0.2), (0, 0.3), (B4, 0.15), (D5, 0.35),
+            (B4, 0.2), (0, 0.3), (A4, 0.15), (E4, 0.35),
+        ]
+        melody_parts = []
+        for freq, dur in melody_notes:
+            if freq == 0:
+                melody_parts.append(_silence(dur))
+            else:
+                melody_parts.append(_tone(freq, dur, 0.12, "square", 0.05))
+        melody = _concat(*melody_parts)
+
+        disco_data = _mix(bass, kicks, hats, melody)
+        self.disco_music = pygame.mixer.Sound(buffer=disco_data)
+
+        # Konami activation jingle
+        self.konami_jingle = pygame.mixer.Sound(buffer=_concat(
+            _tone(523, 0.08, 0.25, "square", 0.02),
+            _tone(659, 0.08, 0.25, "square", 0.02),
+            _tone(784, 0.08, 0.25, "square", 0.02),
+            _tone(1047, 0.15, 0.3, "square", 0.08),
+        ))
+
     def play_music(self) -> None:
         """Start background music loop."""
         if self.enabled:
             self.music.play(loops=-1)
             self.music.set_volume(0.6)
 
-    def stop_music(self) -> None:
-        """Stop background music."""
+    def play_disco_music(self) -> None:
+        """Switch to disco music loop."""
         if self.enabled:
             self.music.stop()
+            self.disco_music.play(loops=-1)
+            self.disco_music.set_volume(0.7)
+
+    def stop_music(self) -> None:
+        """Stop all music."""
+        if self.enabled:
+            self.music.stop()
+            self.disco_music.stop()
 
     def play(self, sound_name: str) -> None:
         """Play a sound effect by name.

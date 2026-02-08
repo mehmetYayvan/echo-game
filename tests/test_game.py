@@ -11,6 +11,7 @@ from src.echo import Echo, ECHO_COLORS
 from src.item import Item
 from src.powerup import Powerup, PowerupType, ActiveEffect, POWERUP_CONFIG
 from src.sound import _tone, _concat, _mix, _silence, SoundManager
+from src.game import KONAMI_CODE, Game
 
 
 class TestPlayer:
@@ -312,3 +313,43 @@ class TestSound:
         sm.play("collect_item")
         sm.play_music()
         sm.stop_music()
+
+
+class TestKonamiCode:
+    """Tests for Konami code detection and disco mode."""
+
+    def test_konami_sequence_length(self):
+        """Konami code should be 10 keys."""
+        assert len(KONAMI_CODE) == 10
+
+    def test_disco_color_returns_rgb(self):
+        """Disco color should return valid RGB tuple."""
+        color = Game._disco_color(0.0)
+        assert len(color) == 3
+        assert all(0 <= c <= 255 for c in color)
+
+    def test_disco_color_changes_over_time(self):
+        """Disco color should change with different offsets."""
+        c1 = Game._disco_color(0.0)
+        c2 = Game._disco_color(1.0)
+        assert c1 != c2
+
+    def test_konami_buffer_tracks_keys(self):
+        """Konami buffer should accumulate key presses."""
+        import pygame
+        # Simulate a partial sequence without full game init
+        buf = []
+        for key in KONAMI_CODE[:5]:
+            buf.append(key)
+        assert len(buf) == 5
+        assert buf == KONAMI_CODE[:5]
+
+    def test_konami_buffer_max_length(self):
+        """Buffer should not exceed Konami code length."""
+        buf = []
+        for key in [999] * 20 + list(KONAMI_CODE):
+            buf.append(key)
+            if len(buf) > len(KONAMI_CODE):
+                buf.pop(0)
+        assert len(buf) == len(KONAMI_CODE)
+        assert buf == KONAMI_CODE

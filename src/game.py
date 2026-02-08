@@ -31,6 +31,13 @@ COLLISION_GRACE = 1.0  # seconds of grace period after echo spawn
 NORMAL_RADIUS = 12
 SHRINK_RADIUS = 6
 
+# Konami code: ↑↑↓↓←→←→BA
+KONAMI_CODE = [
+    pygame.K_UP, pygame.K_UP, pygame.K_DOWN, pygame.K_DOWN,
+    pygame.K_LEFT, pygame.K_RIGHT, pygame.K_LEFT, pygame.K_RIGHT,
+    pygame.K_b, pygame.K_a,
+]
+
 
 class Game:
     """Main game class managing all game logic."""
@@ -48,6 +55,9 @@ class Game:
         self.big_font = pygame.font.Font(None, 72)
         self.high_score = 0
         self.sound = SoundManager()
+        self.disco_mode = False
+        self.konami_buffer: list[int] = []
+        self.disco_flash_timer = 0.0
         self.reset()
         self.sound.play_music()
 
@@ -86,6 +96,7 @@ class Game:
                         return False
                     elif event.key == pygame.K_r and self.state == GameState.GAME_OVER:
                         self.reset()
+                    self._check_konami(event.key)
 
             if self.state == GameState.PLAYING:
                 self._update(dt)
@@ -100,6 +111,10 @@ class Game:
             dt: Delta time in seconds.
         """
         self.game_time += dt
+
+        # Update disco flash timer
+        if self.disco_flash_timer > 0:
+            self.disco_flash_timer -= dt
 
         # Update active effects
         self.active_effects = [e for e in self.active_effects if e.update(dt)]
@@ -175,6 +190,25 @@ class Game:
                             self._game_over()
                             return
 
+    def _check_konami(self, key: int) -> None:
+        """Track key presses and activate disco mode on Konami code."""
+        self.konami_buffer.append(key)
+        if len(self.konami_buffer) > len(KONAMI_CODE):
+            self.konami_buffer.pop(0)
+        if self.konami_buffer == KONAMI_CODE and not self.disco_mode:
+            self.disco_mode = True
+            self.disco_flash_timer = 2.0
+            self.sound.play("konami_jingle")
+            self.sound.play_disco_music()
+
+    @staticmethod
+    def _disco_color(offset: float, speed: float = 3.0) -> tuple[int, int, int]:
+        """Generate a rainbow color cycling over time."""
+        r = int((math.sin(offset * speed) * 0.5 + 0.5) * 255)
+        g = int((math.sin(offset * speed + 2.094) * 0.5 + 0.5) * 255)
+        b = int((math.sin(offset * speed + 4.189) * 0.5 + 0.5) * 255)
+        return (r, g, b)
+
     def _game_over(self) -> None:
         """Handle game over."""
         self.state = GameState.GAME_OVER
@@ -184,7 +218,13 @@ class Game:
 
     def _draw(self) -> None:
         """Draw everything to screen."""
-        self.screen.fill(BG_COLOR)
+        if self.disco_mode:
+            # Pulsing dark background with color tint
+            dc = self._disco_color(self.game_time, 1.5)
+            bg = (dc[0] // 15 + 10, dc[1] // 15 + 10, dc[2] // 15 + 10)
+            self.screen.fill(bg)
+        else:
+            self.screen.fill(BG_COLOR)
 
         # Tint screen during effects
         if self._has_effect(PowerupType.TIME_FREEZE):
@@ -202,8 +242,10 @@ class Game:
         # Draw powerup
         self.powerup.draw(self.screen)
 
-        # Draw echoes
-        for echo in self.echoes:
+        # Draw echoes (rainbow colors in disco mode)
+        for i, echo in enumerate(self.echoes):
+            if self.disco_mode:
+                echo.color = self._disco_color(self.game_time + i * 0.5)
             echo.draw(self.screen)
 
         # Draw player (with visual effect if powered up)
@@ -215,6 +257,14 @@ class Game:
         # Draw active effect indicators
         self._draw_effects()
 
+        # Draw disco mode activation flash
+        if self.disco_flash_timer > 0:
+            alpha = int(255 * min(1.0, self.disco_flash_timer))
+            disco_text = self.big_font.render("DISCO MODE", True,
+                                              self._disco_color(self.game_time, 8.0))
+            disco_rect = disco_text.get_rect(center=(WIDTH // 2, HEIGHT // 3))
+            self.screen.blit(disco_text, disco_rect)
+
         # Draw game over overlay
         if self.state == GameState.GAME_OVER:
             self._draw_game_over()
@@ -223,20 +273,15 @@ class Game:
 
     def _draw_player(self) -> None:
         """Draw player with powerup visual modifications."""
-        if self._has_effect(PowerupType.GHOST_EATER):
-            # Override player color to red during ghost eater
-            original_color = self.player.COLOR
+        original_color = self.player.COLOR
+        if self.disco_mode:
+            self.player.COLOR = self._disco_color(self.game_time + 3.0)
+        elif self._has_effect(PowerupType.GHOST_EATER):
             self.player.COLOR = (255, 80, 80)
-            self.player.draw(self.screen)
-            self.player.COLOR = original_color
         elif self._has_effect(PowerupType.SHRINK):
-            # Purple tint during shrink
-            original_color = self.player.COLOR
             self.player.COLOR = (180, 80, 255)
-            self.player.draw(self.screen)
-            self.player.COLOR = original_color
-        else:
-            self.player.draw(self.screen)
+        self.player.draw(self.screen)
+        self.player.COLOR = original_color
 
     def _draw_ui(self) -> None:
         """Draw score and info overlay."""
