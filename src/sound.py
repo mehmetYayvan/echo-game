@@ -104,11 +104,34 @@ class SoundManager:
             _tone(1320, 0.08, 0.18, "sine", 0.04),
         ))
 
-        # Powerup collected - ascending chord
-        self.collect_powerup = pygame.mixer.Sound(buffer=_concat(
-            _tone(440, 0.07, 0.18, "triangle", 0.02),
-            _tone(660, 0.07, 0.18, "triangle", 0.02),
-            _tone(880, 0.1, 0.22, "triangle", 0.05),
+        # Ghost Eater pickup - aggressive rising power chord
+        self.pickup_ghost_eater = pygame.mixer.Sound(buffer=_concat(
+            _tone(220, 0.05, 0.25, "square", 0.01),
+            _tone(330, 0.05, 0.25, "square", 0.01),
+            _tone(440, 0.06, 0.28, "square", 0.02),
+            _tone(660, 0.1, 0.3, "square", 0.05),
+        ))
+
+        # Time Freeze pickup - icy crystalline shimmer
+        self.pickup_time_freeze = pygame.mixer.Sound(buffer=_mix(
+            _concat(
+                _tone(1200, 0.08, 0.15, "sine", 0.04),
+                _tone(1600, 0.08, 0.12, "sine", 0.04),
+                _tone(2000, 0.12, 0.1, "sine", 0.08),
+            ),
+            _concat(
+                _tone(600, 0.08, 0.1, "triangle", 0.04),
+                _tone(800, 0.08, 0.1, "triangle", 0.04),
+                _tone(1000, 0.12, 0.08, "triangle", 0.08),
+            ),
+        ))
+
+        # Shrink pickup - quick descending squeeze
+        self.pickup_shrink = pygame.mixer.Sound(buffer=_concat(
+            _tone(880, 0.04, 0.2, "triangle", 0.01),
+            _tone(660, 0.04, 0.2, "triangle", 0.01),
+            _tone(440, 0.04, 0.2, "triangle", 0.01),
+            _tone(330, 0.08, 0.22, "sine", 0.05),
         ))
 
         # Echo spawned - low ominous tone
@@ -154,7 +177,7 @@ class SoundManager:
 
         melody_parts = []
         for freq in melody_seq:
-            melody_parts.append(_tone(freq, note_len, 0.06, "triangle", 0.15))
+            melody_parts.append(_tone(freq, note_len, 0.12, "triangle", 0.15))
             melody_parts.append(_silence(gap))
         melody = _concat(*melody_parts)
 
@@ -162,15 +185,15 @@ class SoundManager:
         bass_seq = [C3, C3, Eb3, F3, C3, C3, G3, Eb3]
         bass_parts = []
         for freq in bass_seq:
-            bass_parts.append(_tone(freq, step * 2, 0.05, "sine", 0.1))
+            bass_parts.append(_tone(freq, step * 2, 0.1, "sine", 0.1))
         bass = _concat(*bass_parts)
 
         # Pad: very soft sustained chord tones for atmosphere
         total_dur = step * len(melody_seq)
         pad = _mix(
-            _tone(C4, total_dur, 0.02, "sine", 0.5),
-            _tone(Eb4, total_dur, 0.015, "sine", 0.5),
-            _tone(G4, total_dur, 0.015, "sine", 0.5),
+            _tone(C4, total_dur, 0.04, "sine", 0.5),
+            _tone(Eb4, total_dur, 0.03, "sine", 0.5),
+            _tone(G4, total_dur, 0.03, "sine", 0.5),
         )
 
         music_data = _mix(melody, bass, pad)
@@ -180,7 +203,7 @@ class SoundManager:
         """Start background music loop."""
         if self.enabled:
             self.music.play(loops=-1)
-            self.music.set_volume(0.35)
+            self.music.set_volume(0.6)
 
     def stop_music(self) -> None:
         """Stop background music."""

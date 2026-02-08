@@ -154,7 +154,7 @@ class Game:
             ptype = self.powerup.collect()
             if ptype:
                 self.active_effects.append(ActiveEffect(ptype))
-                self.sound.play("collect_powerup")
+                self.sound.play(f"pickup_{ptype.value}")
 
         # Check collision with echoes
         if self.game_time > COLLISION_GRACE:
