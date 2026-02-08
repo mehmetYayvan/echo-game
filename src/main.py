@@ -8,6 +8,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.player import Player
 from src.echo import Echo
+from src.item import Item
 
 # Screen settings
 WIDTH = 800
@@ -30,6 +31,8 @@ def main():
     echoes: list[Echo] = []
     echo_timer = 0.0
     echo_count = 0
+    item = Item(WIDTH, HEIGHT)
+    score = 0
 
     running = True
     while running:
@@ -69,20 +72,32 @@ def main():
         for echo in echoes:
             echo.update()
 
+        # Update item
+        item.update(dt)
+
+        # Check item collection
+        if item.collides_with(player.x, player.y, player.RADIUS):
+            score += 1
+            item.respawn()
+
         # Draw
         screen.fill(BG_COLOR)
+        item.draw(screen)
         for echo in echoes:
             echo.draw(screen)
         player.draw(screen)
 
-        # Draw echo countdown
+        # Draw UI
+        font = pygame.font.Font(None, 36)
+        score_text = font.render(f"Score: {score}", True, (255, 255, 255))
+        screen.blit(score_text, (20, 15))
+
+        info_font = pygame.font.Font(None, 28)
         time_to_next = ECHO_INTERVAL - echo_timer
-        font = pygame.font.Font(None, 30)
-        countdown_text = font.render(f"Next echo: {time_to_next:.1f}s", True, (100, 100, 120))
+        countdown_text = info_font.render(f"Next echo: {time_to_next:.1f}s", True, (100, 100, 120))
         screen.blit(countdown_text, (WIDTH - 180, 15))
 
-        # Draw echo count
-        echo_text = font.render(f"Echoes: {len(echoes)}", True, (100, 100, 120))
+        echo_text = info_font.render(f"Echoes: {len(echoes)}", True, (100, 100, 120))
         screen.blit(echo_text, (WIDTH - 180, 45))
 
         pygame.display.flip()
