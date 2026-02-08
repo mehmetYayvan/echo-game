@@ -20,7 +20,7 @@ POWERUP_CONFIG = {
         "glow_color": (255, 50, 50, 80),
         "icon": "skull",              # Will draw a skull shape
         "duration": 5.0,
-        "spawn_weight": 1,            # Rarest
+        "spawn_weight": 2,            # Rarer than others
         "label": "GHOST EATER",
     },
     PowerupType.TIME_FREEZE: {

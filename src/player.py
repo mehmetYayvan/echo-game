@@ -77,6 +77,18 @@ class Player:
         # Draw player circle
         pygame.draw.circle(screen, self.COLOR, (int(self.x), int(self.y)), self.RADIUS)
 
+        # Draw white outline ring to distinguish from echoes
+        pygame.draw.circle(screen, (255, 255, 255), (int(self.x), int(self.y)), self.RADIUS + 2, 2)
+
+        # Draw small arrow/marker above player
+        marker_y = int(self.y) - self.RADIUS - 10
+        points = [
+            (int(self.x), marker_y + 8),       # bottom point
+            (int(self.x) - 5, marker_y),        # top left
+            (int(self.x) + 5, marker_y),        # top right
+        ]
+        pygame.draw.polygon(screen, (255, 255, 255), points)
+
     def reset(self, x: float, y: float) -> None:
         """Reset player to starting position.
 
