@@ -1,15 +1,18 @@
 """Main entry point for Echo game."""
-
+import asyncio
 import pygame
 import sys
 import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.game import Game, WIDTH, HEIGHT
+try:
+    from game import Game, WIDTH, HEIGHT
+except ImportError:
+    from src.game import Game, WIDTH, HEIGHT
 
 
-def main():
+async def main():
     """Run the game."""
     pygame.mixer.pre_init(44100, -16, 1, 1024)
     pygame.init()
@@ -17,10 +20,10 @@ def main():
     pygame.display.set_caption("Echo")
 
     game = Game(screen)
-    game.run()
+    await game.run()
 
     pygame.quit()
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

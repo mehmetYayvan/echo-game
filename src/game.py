@@ -1,14 +1,21 @@
 """Game module - main game loop, collision, state management."""
-
+import asyncio
 import pygame
 import math
 from enum import Enum
 
-from src.player import Player
-from src.echo import Echo
-from src.item import Item
-from src.powerup import Powerup, PowerupType, ActiveEffect
-from src.sound import SoundManager
+try:
+    from player import Player
+    from echo import Echo
+    from item import Item
+    from powerup import Powerup, PowerupType, ActiveEffect
+    from sound import SoundManager
+except ImportError:
+    from src.player import Player
+    from src.echo import Echo
+    from src.item import Item
+    from src.powerup import Powerup, PowerupType, ActiveEffect
+    from src.sound import SoundManager
 
 
 class GameState(Enum):
@@ -79,7 +86,7 @@ class Game:
         """Check if a powerup effect is currently active."""
         return any(e.powerup_type == powerup_type for e in self.active_effects)
 
-    def run(self) -> bool:
+    async def run(self) -> bool:
         """Run the game loop.
 
         Returns:
@@ -101,6 +108,7 @@ class Game:
             if self.state == GameState.PLAYING:
                 self._update(dt)
             self._draw()
+            await asyncio.sleep(0)
 
         return True
 
