@@ -20,7 +20,9 @@ except ImportError:
 
 class GameState(Enum):
     """Game states."""
+    MENU = "menu"
     PLAYING = "playing"
+    PAUSED = "paused"
     GAME_OVER = "game_over"
 
 
@@ -65,7 +67,8 @@ class Game:
         self.disco_mode = False
         self.konami_buffer: list[int] = []
         self.disco_flash_timer = 0.0
-        self.reset()
+        self.menu_time = 0.0
+        self.state = GameState.MENU
         self.sound.play_music()
 
     def reset(self) -> None:
@@ -81,6 +84,13 @@ class Game:
         self.game_time = 0.0
         self.state = GameState.PLAYING
         self.ghosts_eaten = 0
+        # Reset disco mode per run
+        if self.disco_mode:
+            self.disco_mode = False
+            self.disco_flash_timer = 0.0
+            self.konami_buffer.clear()
+            self.sound.stop_music()
+            self.sound.play_music()
 
     def _has_effect(self, powerup_type: PowerupType) -> bool:
         """Check if a powerup effect is currently active."""
@@ -99,13 +109,30 @@ class Game:
                 if event.type == pygame.QUIT:
                     return False
                 elif event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_ESCAPE:
-                        return False
-                    elif event.key == pygame.K_r and self.state == GameState.GAME_OVER:
-                        self.reset()
-                    self._check_konami(event.key)
+                    if self.state == GameState.MENU:
+                        if event.key == pygame.K_ESCAPE:
+                            return False
+                        elif event.key == pygame.K_RETURN or event.key == pygame.K_SPACE:
+                            self.reset()
+                        self._check_konami(event.key)
+                    elif self.state == GameState.PLAYING:
+                        if event.key == pygame.K_ESCAPE or event.key == pygame.K_p:
+                            self.state = GameState.PAUSED
+                        self._check_konami(event.key)
+                    elif self.state == GameState.PAUSED:
+                        if event.key == pygame.K_ESCAPE or event.key == pygame.K_p:
+                            self.state = GameState.PLAYING
+                        elif event.key == pygame.K_q:
+                            self.state = GameState.MENU
+                    elif self.state == GameState.GAME_OVER:
+                        if event.key == pygame.K_ESCAPE:
+                            self.state = GameState.MENU
+                        elif event.key == pygame.K_r:
+                            self.reset()
 
-            if self.state == GameState.PLAYING:
+            if self.state == GameState.MENU:
+                self.menu_time += dt
+            elif self.state == GameState.PLAYING:
                 self._update(dt)
             self._draw()
             await asyncio.sleep(0)
@@ -226,6 +253,11 @@ class Game:
 
     def _draw(self) -> None:
         """Draw everything to screen."""
+        if self.state == GameState.MENU:
+            self._draw_menu()
+            pygame.display.flip()
+            return
+
         if self.disco_mode:
             # Pulsing dark background with color tint
             dc = self._disco_color(self.game_time, 1.5)
@@ -273,8 +305,10 @@ class Game:
             disco_rect = disco_text.get_rect(center=(WIDTH // 2, HEIGHT // 3))
             self.screen.blit(disco_text, disco_rect)
 
-        # Draw game over overlay
-        if self.state == GameState.GAME_OVER:
+        # Draw overlays
+        if self.state == GameState.PAUSED:
+            self._draw_paused()
+        elif self.state == GameState.GAME_OVER:
             self._draw_game_over()
 
         pygame.display.flip()
@@ -348,6 +382,64 @@ class Game:
             self.screen.blit(hs_text, hs_rect)
 
         # Restart instruction
-        restart_text = self.small_font.render("Press R to restart | ESC to quit", True, (150, 150, 150))
+        restart_text = self.small_font.render("R to restart | ESC for menu", True, (150, 150, 150))
         restart_rect = restart_text.get_rect(center=(WIDTH // 2, HEIGHT * 2 // 3))
         self.screen.blit(restart_text, restart_rect)
+
+    def _draw_menu(self) -> None:
+        """Draw main menu screen."""
+        self.screen.fill(BG_COLOR)
+
+        # Title with subtle pulse
+        pulse = 0.9 + 0.1 * math.sin(self.menu_time * 2)
+        title_font = pygame.font.Font(None, int(90 * pulse))
+        title_text = title_font.render("ECHO", True, (80, 160, 255))
+        title_rect = title_text.get_rect(center=(WIDTH // 2, HEIGHT // 3 - 20))
+        self.screen.blit(title_text, title_rect)
+
+        # Subtitle
+        sub_text = self.small_font.render("Your past becomes your enemy", True, (100, 100, 140))
+        sub_rect = sub_text.get_rect(center=(WIDTH // 2, HEIGHT // 3 + 30))
+        self.screen.blit(sub_text, sub_rect)
+
+        # Blinking "Press ENTER to play"
+        if int(self.menu_time * 2) % 2 == 0:
+            play_text = self.font.render("Press ENTER to play", True, (200, 200, 220))
+            play_rect = play_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 30))
+            self.screen.blit(play_text, play_rect)
+
+        # Controls
+        controls = [
+            "WASD / Arrow Keys - Move",
+            "P / ESC - Pause",
+        ]
+        y = HEIGHT // 2 + 90
+        for line in controls:
+            ctrl_text = self.small_font.render(line, True, (80, 80, 100))
+            ctrl_rect = ctrl_text.get_rect(center=(WIDTH // 2, y))
+            self.screen.blit(ctrl_text, ctrl_rect)
+            y += 25
+
+        # High score
+        if self.high_score > 0:
+            hs_text = self.font.render(f"Best: {self.high_score}", True, (255, 220, 50))
+            hs_rect = hs_text.get_rect(center=(WIDTH // 2, HEIGHT - 60))
+            self.screen.blit(hs_text, hs_rect)
+
+    def _draw_paused(self) -> None:
+        """Draw pause overlay."""
+        overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 150))
+        self.screen.blit(overlay, (0, 0))
+
+        pause_text = self.big_font.render("PAUSED", True, (200, 200, 220))
+        pause_rect = pause_text.get_rect(center=(WIDTH // 2, HEIGHT // 3))
+        self.screen.blit(pause_text, pause_rect)
+
+        resume_text = self.font.render("P / ESC to resume", True, (150, 150, 170))
+        resume_rect = resume_text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+        self.screen.blit(resume_text, resume_rect)
+
+        quit_text = self.small_font.render("Q to quit to menu", True, (100, 100, 120))
+        quit_rect = quit_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 40))
+        self.screen.blit(quit_text, quit_rect)
